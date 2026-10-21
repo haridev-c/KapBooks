@@ -6,7 +6,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
-import { MatExpansionModule } from '@angular/material/expansion';
 import { map } from 'rxjs';
 
 @Component({
@@ -18,20 +17,21 @@ import { map } from 'rxjs';
     MatToolbarModule,
     MatSidenavModule,
     MatListModule,
-    MatExpansionModule,
   ],
   selector: 'app-root',
   template: `
     <a class="skip-link" href="#main-content">Skip to content</a>
     <mat-toolbar class="app-toolbar">
       <button
-        mat-button
+        mat-icon-button
         (click)="toggleMenu()"
         aria-label="Toggle navigation"
         [attr.aria-expanded]="mobile() ? mobileOpen() : desktopOpen()"
         aria-controls="app-navigation"
       >
-        Menu
+        <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M3 6h18M3 12h18M3 18h18" fill="none" stroke="currentColor" stroke-width="2" />
+        </svg>
       </button>
       <a class="brand" routerLink="/books" aria-label="KapBooks home">
         <span class="brand-mark" aria-hidden="true">K</span>
@@ -48,26 +48,17 @@ import { map } from 'rxjs';
       >
         <nav aria-label="Main navigation">
           <p class="nav-caption">YOUR WORKSPACE</p>
-          <mat-accordion>
-            <mat-expansion-panel [expanded]="true" class="navigation-panel">
-              <mat-expansion-panel-header
-                ><mat-panel-title>Content Management</mat-panel-title></mat-expansion-panel-header
-              >
-              <mat-nav-list>
-                <a
-                  mat-list-item
-                  routerLink="/books"
-                  routerLinkActive="active"
-                  #booksLink="routerLinkActive"
-                  [activated]="booksLink.isActive"
-                  ariaCurrentWhenActive="page"
-                  (click)="closeMobile()"
-                  >Books</a
-                >
-              </mat-nav-list>
-            </mat-expansion-panel>
-          </mat-accordion>
           <mat-nav-list>
+            <a
+              mat-list-item
+              routerLink="/books"
+              routerLinkActive="active"
+              #booksLink="routerLinkActive"
+              [activated]="booksLink.isActive"
+              ariaCurrentWhenActive="page"
+              (click)="closeMobile()"
+              >Books</a
+            >
             <a
               mat-list-item
               routerLink="/courses"
@@ -158,14 +149,6 @@ import { map } from 'rxjs';
       font-size: 11px;
       font-weight: 700;
       letter-spacing: 1.5px;
-    }
-    .navigation-panel {
-      box-shadow: none;
-      background: transparent;
-    }
-    mat-panel-title {
-      color: #2d5037;
-      font-weight: 600;
     }
     mat-nav-list a {
       margin-bottom: 4px;
