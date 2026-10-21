@@ -5,7 +5,33 @@ The list loads 20 books on startup and appends more as you scroll. Each Express
 request makes exactly one Google request. Each page success or failure is also
 logged in the browser console.
 
-The full [mockup](Books-1.png), search, book creation, sidebar, and Docker are deferred.
+The client uses default Angular Material styling and the rough layout of the
+[reference](Books-1.png). Books support local search and metadata CRUD; courses
+are ordered book collections. All mutations live in NgRx memory: **refresh resets
+created records, edits, deletions, and courses**. The server remains read-only.
+
+## Client features
+
+- `/books` searches loaded/local books across title, authors, and publisher. All
+  query words must match, case-insensitively. Use **Load more books** during search
+  to fetch more pages; outside search, scrolling loads automatically.
+- Book dialogs require a trimmed title, at least one author (one per line),
+  publisher, and a valid date. Choose year, month, or day precision. Duplicate
+  titles are allowed. Cancel or dismiss discards unsaved drafts.
+- `/books/:id` shows metadata and linked courses. Deletion is blocked while a
+  course references the book; remove those references first.
+- `/courses` and `/courses/:id` manage named reading lists. Description and books
+  are optional; duplicate course names are allowed. Add loaded books once per
+  course and arrange them with Move up/down controls.
+- Creates appear first and edits retain position. Local edits and deleted IDs
+  survive subsequent page loads. Courses reflect updated book metadata.
+- Missing detail IDs show “Not available in this session”; detail routes do not
+  fetch the entire catalog or restore previous session data.
+- Responsive navigation groups Books under Content Management and links to
+  Courses. Facades connect UI to state; selectors derive search and relationships;
+  effects handle API requests, the cross-feature deletion guard, and snackbars.
+
+Persistence, lesson authoring, enrollment, progress tracking, and Docker are deferred.
 
 ## Setup and run
 
@@ -69,8 +95,9 @@ Example response (illustrative data):
 Express requests up to 20 books at the supplied offset. A nonempty page advances
 `nextStartIndex` by 20, even if the page is short. An empty page returns
 `{ "books": [], "nextStartIndex": null }`. Pagination does not rely on Google's
-`totalItems`. Missing authors become `[]`; missing title, publisher, and date become
-`null`. Date precision is preserved. Malformed responses cause an error.
+`totalItems`. Incomplete records are skipped; a page of skipped records still
+advances the offset. Date precision is preserved. Malformed responses cause an
+error. The client retains its nullable metadata contract for compatibility.
 
 NgRx retains the books, loading/error state, and next offset. It appends pages,
 deduplicating by ID while preserving first-seen content and order. The viewport
@@ -112,7 +139,13 @@ single-page requests, normalization, end detection, errors/timeouts, append and
 deduplication, concurrent-load suppression, retry, and observer cleanup.
 Angular tests simulate intersections without relying on browser layout.
 
+Feature unit tests and maintenance of existing client unit tests are deferred.
+This feature phase uses a production client build and browser acceptance checks
+for CRUD, search/paging/retry, date precision, course references/order, refresh
+reset, unavailable detail links, keyboard use, and mobile layout.
+
 After building, run the compiled API with `npm start` inside `server`.
 The static client is in `client/dist/client/browser`. Production hosting must
-serve it and forward `/api` to Express on the same origin; the development proxy
+serve it with an `index.html` fallback for client routes and forward `/api` to
+Express on the same origin; the development proxy
 only applies to `npm start` inside `client`.

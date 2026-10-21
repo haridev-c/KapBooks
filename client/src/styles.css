@@ -1,3 +1,115 @@
-/* You can add global styles to this file, and also import other style files */
+@import '@angular/material/prebuilt-themes/azure-blue.css';
 
-@import 'tailwindcss';
+html {
+  color-scheme: light;
+}
+body {
+  margin: 0;
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+}
+* {
+  box-sizing: border-box;
+}
+h1 {
+  font: var(--mat-sys-headline-large);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+h2 {
+  font: var(--mat-sys-title-large);
+}
+h3 {
+  font: var(--mat-sys-title-medium);
+}
+p,
+li {
+  overflow-wrap: anywhere;
+}
+a {
+  color: var(--mat-sys-primary);
+}
+button,
+a,
+input,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+.page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.search-field {
+  width: min(100%, 720px);
+  margin-bottom: 20px;
+}
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  list-style: none;
+  margin: 24px 0;
+  padding: 0;
+}
+.card-grid > li {
+  min-width: 0;
+}
+mat-card-title {
+  overflow-wrap: anywhere;
+}
+.load-status {
+  padding: 16px 0;
+}
+.sentinel {
+  height: 1px;
+}
+.form-fields {
+  display: flex !important;
+  flex-direction: column;
+  gap: 12px;
+}
+.form-fields > * {
+  flex-shrink: 0;
+}
+.form-fields mat-form-field {
+  width: 100%;
+}
+.reading-list {
+  padding-left: 24px;
+}
+.reading-list li {
+  margin-bottom: 20px;
+  padding-left: 4px;
+}
+.reading-list .actions {
+  margin-top: 8px;
+}
+.preserve-lines {
+  white-space: pre-wrap;
+}
+.skip-link {
+  position: fixed;
+  top: -100px;
+  left: 16px;
+  z-index: 1000;
+  padding: 12px;
+  background: var(--mat-sys-surface);
+}
+.skip-link:focus {
+  top: 8px;
+}
+@media (max-width: 1000px) {
+  .card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
