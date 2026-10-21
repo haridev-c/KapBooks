@@ -5,9 +5,15 @@
   "license": "ISC",
   "author": "",
   "type": "module",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "node --env-file-if-exists=.env --watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node --env-file-if-exists=.env dist/index.js",
+    "test": "node --test src/*.test.ts"
+  },
+  "engines": {
+    "node": ">=24.15.0"
   },
   "dependencies": {
     "express": "^5.3.0"

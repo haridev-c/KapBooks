@@ -1,9 +1,25 @@
-import express, { type Express, type Request, type Response } from 'express';
+import express from "express";
+import { BooksError, type GoogleBooksService } from "./books.ts";
 
-const app: Express = express();
+export function createApp(booksService: Pick<GoogleBooksService, "getBooks">) {
+  const app = express();
 
-app.get('/', (req: Request, res: Response) => {
-  res.send('Hello World!');
-});
+  app.get("/api/books", async (_req, res) => {
+    try {
+      res.json({ books: await booksService.getBooks() });
+    } catch (error) {
+      const failure =
+        error instanceof BooksError
+          ? error
+          : new BooksError(
+              "UPSTREAM_FAILURE",
+              "Unable to fetch books from Google Books.",
+            );
+      res.status(failure.status).json({
+        error: { code: failure.code, message: failure.message },
+      });
+    }
+  });
 
-app.listen(3000);
+  return app;
+}
