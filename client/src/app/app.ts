@@ -3,6 +3,7 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
@@ -14,6 +15,7 @@ import { map } from 'rxjs';
     RouterLinkActive,
     RouterOutlet,
     MatButtonModule,
+    MatIconModule,
     MatToolbarModule,
     MatSidenavModule,
     MatListModule,
@@ -29,9 +31,7 @@ import { map } from 'rxjs';
         [attr.aria-expanded]="mobile() ? mobileOpen() : desktopOpen()"
         aria-controls="app-navigation"
       >
-        <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <path d="M3 6h18M3 12h18M3 18h18" fill="none" stroke="currentColor" stroke-width="2" />
-        </svg>
+        <mat-icon>menu</mat-icon>
       </button>
       <a class="brand" routerLink="/books" aria-label="KapBooks home">
         <span class="brand-mark" aria-hidden="true">K</span>
