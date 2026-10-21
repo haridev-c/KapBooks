@@ -8,6 +8,7 @@ export interface Book {
 
 export interface BooksResponse {
   books: Book[];
+  nextStartIndex: number | null;
 }
 
 export interface BooksFailure {

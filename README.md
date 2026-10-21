@@ -1,24 +1,22 @@
 # Book List Assignment
 
 Angular 22 + NgRx Store/Effects with an Express 5 wrapper for Google Books.
-On application load, Angular dispatches a books load action, fetches `/api/books`
-through Express, stores the result, and logs `Books loaded:` followed by the books
-array in the browser console. Errors are stored and logged as `Books load failed:`.
+The list loads 20 books on startup and appends more as you scroll. Each Express
+request makes exactly one Google request. Each page success or failure is also
+logged in the browser console.
 
-This first slice retains the Angular starter screen. The listing design in
-[Books-1.png](Books-1.png), search, book creation, sidebar, and Docker are deferred.
+The full [mockup](Books-1.png), search, book creation, sidebar, and Docker are deferred.
 
-## Prerequisites
+## Setup and run
 
-- Node.js 24.15+ on the 24.x line, or Node.js 26+ (verified with 26.12.0).
-- npm (verified with 11.20.0).
-- A Google Cloud project with the Books API enabled and an API key. Follow the
-  [Google Books API setup guide](https://developers.google.com/books/docs/v1/using#auth).
-  Keep the key on the server; it is never sent to Angular.
+Use Node.js 24.15+ on the 24.x line, or Node.js 26+ (verified with 26.12.0),
+and npm (verified with 11.20.0).
 
-## Run locally
+Create a Google Cloud project, enable the Books API, and obtain an API key using
+[Google's setup guide](https://developers.google.com/books/docs/v1/using#APIKey).
+The key stays in Express and is never sent to Angular.
 
-From the repository root, install both apps:
+From the repository root:
 
 ```bash
 npm ci --prefix server
@@ -26,42 +24,32 @@ npm ci --prefix client
 cp server/.env.example server/.env
 ```
 
-Set `GOOGLE_BOOKS_API_KEY` in `server/.env` to your key. Environment files are
-ignored by git; `.env.example` contains only a placeholder. Express exits with a
-clear message if the key is absent or blank. An existing environment variable
-takes precedence over the value in `.env`.
+Set `GOOGLE_BOOKS_API_KEY` in `server/.env`. Express exits clearly if the key is
+missing or blank. Environment files are ignored by git; existing environment
+variables take precedence over `.env`.
 
-Start Express in one terminal:
+Start each app in a separate terminal:
 
 ```bash
 cd server
 npm run dev
 ```
 
-Start Angular in another terminal:
-
 ```bash
 cd client
 npm start
 ```
 
-Open <http://localhost:4200> and the browser developer console. Angular's development
-proxy forwards `/api/**` to Express at <http://localhost:3000>; the browser does not
-call Google directly. The page remains the starter UI while the request runs.
+Open <http://localhost:4200>. The development proxy forwards `/api/**` to Express
+on port 3000.
 
-You can also call the endpoint directly:
+## Pagination and scrolling
 
-```bash
-curl http://localhost:3000/api/books
-```
+`GET /api/books?startIndex=0` searches for the fixed text `kaplan test prep`.
+The offset defaults to zero and must be a non-negative decimal safe integer
+with room to advance by 20. Invalid or repeated offsets return HTTP 400.
 
-## API behavior
-
-`GET /api/books` takes no query parameters and searches for the fixed text
-`kaplan test prep`. This preserves the assignment's query; it is not an exact
-publisher or author filter.
-
-Example response shape (illustrative data):
+Example response (illustrative data):
 
 ```json
 {
@@ -73,34 +61,39 @@ Example response shape (illustrative data):
       "publisher": null,
       "publishedDate": "2024"
     }
-  ]
+  ],
+  "nextStartIndex": 20
 }
 ```
 
-The service requests sequential Google pages of 40 books, advancing `startIndex`
-by 40 until an empty page. It deduplicates by Google volume ID, keeping the first
-occurrence and order. Missing authors become `[]`; missing title, publisher, and
-publication date become `null`. Dates retain Google's original precision. Missing
-IDs, invalid metadata types, and malformed responses cause failure.
+Express requests up to 20 books at the supplied offset. A nonempty page advances
+`nextStartIndex` by 20, even if the page is short. An empty page returns
+`{ "books": [], "nextStartIndex": null }`. Pagination does not rely on Google's
+`totalItems`. Missing authors become `[]`; missing title, publisher, and date become
+`null`. Date precision is preserved. Malformed responses cause an error.
 
-Collection has a 10-second timeout per upstream request, a 60-second overall
-deadline, and a maximum of 100 pages (including the terminating empty-page
-request). If any page fails, the endpoint returns an error without partial books.
-Google search results can change between pages, so this collection is not a
-guaranteed snapshot. There is no server cache or automatic retry; each endpoint
-call starts a new collection and consumes Google API quota.
+NgRx retains the books, loading/error state, and next offset. It appends pages,
+deduplicating by ID while preserving first-seen content and order. The viewport
+observer requests the next page within 300px of the list bottom and rechecks after
+rendering each page to fill short viewports. Only one request runs at a time.
+
+On failure, loaded books remain visible and automatic loading pauses. **Retry**
+requests the same failed offset. Loading stops after an empty page. The list
+shows loading, empty, error/retry, and end-of-list messages.
+
+Google search results may change between requests; this is a text search, not
+an exact author or publisher filter.
 
 Errors use `{ "error": { "code": "...", "message": "..." } }`:
 
-| HTTP status | Code               | Meaning                                                                         |
-| ----------- | ------------------ | ------------------------------------------------------------------------------- |
-| 502         | `UPSTREAM_FAILURE` | Google rejected the request, the network failed, or the response was malformed. |
-| 502         | `COLLECTION_LIMIT` | 100 pages were fetched without reaching an empty page.                          |
-| 504         | `UPSTREAM_TIMEOUT` | A request or the overall collection timed out.                                  |
+| HTTP | Code                  | Meaning                                                 |
+| ---- | --------------------- | ------------------------------------------------------- |
+| 400  | `INVALID_START_INDEX` | Invalid pagination offset.                              |
+| 502  | `UPSTREAM_FAILURE`    | Upstream rejection, network failure, or malformed data. |
+| 504  | `UPSTREAM_TIMEOUT`    | The Google request exceeded 10 seconds.                 |
 
-Responses do not expose Google's error bodies or the API key. A later NgRx load
-action can retry after failure. `exhaustMap` ignores additional load actions while
-a request is in progress; no retry control is added to the UI in this slice.
+Errors do not expose upstream details or credentials. There is no cache or
+automatic retry.
 
 ## Tests and builds
 
@@ -113,29 +106,13 @@ npm run build --prefix server
 npm run build --prefix client
 ```
 
-Tests mock all Google responses and require no API key or external network.
-Express integration tests bind temporary localhost ports. They cover collection,
-normalization, deduplication, malformed data, upstream failures, timeouts, and
-error status codes. Angular tests cover the HTTP service, reducer/selectors,
-startup dispatch, success/error logs, retry after failure, and concurrent-load
-suppression.
+Tests mock Google and require no API key or external network. Server integration
+tests use temporary localhost ports. Coverage includes offset validation,
+single-page requests, normalization, end detection, errors/timeouts, append and
+deduplication, concurrent-load suppression, retry, and observer cleanup.
+Angular tests simulate intersections without relying on browser layout.
 
-After building, run the compiled server with:
-
-```bash
-cd server
-npm start
-```
-
-The client build is in `client/dist/client/browser`. The Angular development proxy
-only applies to `npm start`; production hosting must serve the static client and
-forward `/api` to Express on the same origin. Production hosting is deferred.
-
-## Code organization
-
-- Express: the importable app defines the endpoint, the Google Books service owns
-  upstream requests and normalization, and the entrypoint validates configuration
-  and listens on port 3000.
-- Angular: a books HTTP service calls Express; NgRx actions, reducer/selectors,
-  and effects own loading/data/error state. The root component only dispatches
-  startup loading. Non-dispatching effects handle console logging.
+After building, run the compiled API with `npm start` inside `server`.
+The static client is in `client/dist/client/browser`. Production hosting must
+serve it and forward `/api` to Express on the same origin; the development proxy
+only applies to `npm start` inside `client`.

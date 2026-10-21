@@ -1,0 +1,29 @@
+<main>
+  <h1>Books</h1>
+  <p class="subtitle">Kaplan Test Prep</p>
+
+  <ul class="books" aria-label="Books" [attr.aria-busy]="state().loading">
+    @for (book of state().books; track book.id) {
+      <li>
+        <h2>{{ book.title || 'Untitled book' }}</h2>
+        <p>Authors: {{ book.authors.join(', ') || 'Unknown' }}</p>
+        <p>Publisher: {{ book.publisher || 'Unknown' }}</p>
+        <p>Published date: {{ book.publishedDate || 'Unknown' }}</p>
+      </li>
+    }
+  </ul>
+
+  <div class="status" aria-live="polite">
+    @if (state().loading) {
+      <p>Loading books…</p>
+    }
+    @if (state().error; as error) {
+      <p>{{ error.message }}</p>
+      <button type="button" (click)="retry()">Retry</button>
+    }
+    @if (state().nextStartIndex === null) {
+      <p>{{ state().books.length ? 'All books loaded.' : 'No books found.' }}</p>
+    }
+  </div>
+  <div #sentinel class="sentinel" aria-hidden="true"></div>
+</main>

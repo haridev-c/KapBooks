@@ -1,10 +1,11 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { catchError, exhaustMap, map, of, tap } from 'rxjs';
+import { Store } from '@ngrx/store';
+import { catchError, exhaustMap, filter, map, of, tap, withLatestFrom } from 'rxjs';
 import { BooksFailure } from './book';
 import { BooksService } from './books.service';
-import { booksActions } from './books.state';
+import { booksActions, booksFeature } from './books.state';
 
 function loadFailure(error: unknown): BooksFailure {
   if (error instanceof HttpErrorResponse) {
@@ -20,13 +21,28 @@ function loadFailure(error: unknown): BooksFailure {
 export class BooksEffects {
   private readonly actions$ = inject(Actions);
   private readonly booksService = inject(BooksService);
+  private readonly store = inject(Store);
+
+  readonly requestPage$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(booksActions.load, booksActions.retry),
+      withLatestFrom(this.store.select(booksFeature.selectBooksState)),
+      filter(
+        ([action, state]) =>
+          !state.loading &&
+          state.nextStartIndex !== null &&
+          (!state.error || action.type === booksActions.retry.type),
+      ),
+      map(([, state]) => booksActions.loadPage({ startIndex: state.nextStartIndex! })),
+    ),
+  );
 
   readonly load$ = createEffect(() =>
     this.actions$.pipe(
-      ofType(booksActions.load),
-      exhaustMap(() =>
-        this.booksService.getBooks().pipe(
-          map(({ books }) => booksActions.loadSuccess({ books })),
+      ofType(booksActions.loadPage),
+      exhaustMap(({ startIndex }) =>
+        this.booksService.getBooks(startIndex).pipe(
+          map((page) => booksActions.loadSuccess(page)),
           catchError((error: unknown) =>
             of(booksActions.loadFailure({ error: loadFailure(error) })),
           ),

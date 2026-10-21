@@ -6,8 +6,15 @@ export interface Book {
   publishedDate: string | null;
 }
 
+export interface BooksPage {
+  books: Book[];
+  nextStartIndex: number | null;
+}
+
+export const PAGE_SIZE = 20;
+
 export class BooksError extends Error {
-  readonly code: "UPSTREAM_FAILURE" | "COLLECTION_LIMIT" | "UPSTREAM_TIMEOUT";
+  readonly code: "UPSTREAM_FAILURE" | "UPSTREAM_TIMEOUT";
 
   constructor(code: BooksError["code"], message: string) {
     super(message);
@@ -68,75 +75,56 @@ function parsePage(value: unknown): Book[] {
   }
   // Google may omit items when a search page is empty.
   const items = value.items === undefined ? [] : value.items;
-  if (!Array.isArray(items) || items.length > 40) throw upstreamFailure();
+  if (!Array.isArray(items) || items.length > PAGE_SIZE)
+    throw upstreamFailure();
   return items.map(normalizeBook);
 }
 
 interface GoogleBooksOptions {
   fetch?: typeof fetch;
   requestTimeoutMs?: number;
-  overallTimeoutMs?: number;
-  maxPages?: number;
 }
 
 export class GoogleBooksService {
   private readonly apiKey: string;
   private readonly fetchPage: typeof fetch;
   private readonly requestTimeoutMs: number;
-  private readonly overallTimeoutMs: number;
-  private readonly maxPages: number;
 
   constructor(apiKey: string, options: GoogleBooksOptions = {}) {
     this.apiKey = apiKey;
     this.fetchPage = options.fetch ?? fetch;
     this.requestTimeoutMs = options.requestTimeoutMs ?? 10_000;
-    this.overallTimeoutMs = options.overallTimeoutMs ?? 60_000;
-    this.maxPages = options.maxPages ?? 100;
   }
 
-  async getBooks(): Promise<Book[]> {
-    const books = new Map<string, Book>();
-    const deadline = AbortSignal.timeout(this.overallTimeoutMs);
+  async getBooks(startIndex: number): Promise<BooksPage> {
+    const signal = AbortSignal.timeout(this.requestTimeoutMs);
+    const url = new URL("https://www.googleapis.com/books/v1/volumes");
+    url.search = new URLSearchParams({
+      q: "kaplan test prep",
+      startIndex: String(startIndex),
+      maxResults: String(PAGE_SIZE),
+      key: this.apiKey,
+    }).toString();
 
-    for (let page = 0; page < this.maxPages; page++) {
-      const signal = AbortSignal.any([
-        deadline,
-        AbortSignal.timeout(this.requestTimeoutMs),
-      ]);
-      const url = new URL("https://www.googleapis.com/books/v1/volumes");
-      url.search = new URLSearchParams({
-        q: "kaplan test prep",
-        startIndex: String(page * 40),
-        maxResults: "40",
-        key: this.apiKey,
-      }).toString();
-
-      let pageBooks: Book[];
-      try {
-        signal.throwIfAborted();
-        const response = await this.fetchPage(url, { signal });
-        if (!response.ok) throw upstreamFailure();
-        pageBooks = parsePage(await response.json());
-        signal.throwIfAborted();
-      } catch (error) {
-        if (signal.aborted) {
-          throw new BooksError(
-            "UPSTREAM_TIMEOUT",
-            "Google Books collection timed out.",
-          );
-        }
-        if (error instanceof BooksError) throw error;
-        throw upstreamFailure();
+    try {
+      signal.throwIfAborted();
+      const response = await this.fetchPage(url, { signal });
+      if (!response.ok) throw upstreamFailure();
+      const books = parsePage(await response.json());
+      signal.throwIfAborted();
+      return {
+        books,
+        nextStartIndex: books.length ? startIndex + PAGE_SIZE : null,
+      };
+    } catch (error) {
+      if (signal.aborted) {
+        throw new BooksError(
+          "UPSTREAM_TIMEOUT",
+          "Google Books request timed out.",
+        );
       }
-
-      if (pageBooks.length === 0) return [...books.values()];
-      for (const book of pageBooks) {
-        if (!books.has(book.id)) books.set(book.id, book);
-      }
+      if (error instanceof BooksError) throw error;
+      throw upstreamFailure();
     }
-    throw new BooksError(
-      "COLLECTION_LIMIT",
-      "Google Books collection exceeded the page limit.",
-    );
   }
 }

@@ -6,7 +6,7 @@ import { BooksResponse } from './book';
 export class BooksService {
   private readonly http = inject(HttpClient);
 
-  getBooks() {
-    return this.http.get<BooksResponse>('/api/books');
+  getBooks(startIndex: number) {
+    return this.http.get<BooksResponse>('/api/books', { params: { startIndex } });
   }
 }
