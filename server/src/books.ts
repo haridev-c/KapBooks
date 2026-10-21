@@ -1,17 +1,35 @@
-export interface Book {
-  id: string;
-  title: string | null;
-  authors: string[];
-  publisher: string | null;
-  publishedDate: string | null;
-}
+import { z } from "zod";
+
+export const PAGE_SIZE = 20;
+
+const nonEmptyString = z.string().min(1);
+
+const volumeInfoSchema = z.object({
+  title: nonEmptyString,
+  authors: z.array(nonEmptyString).min(1),
+  publisher: nonEmptyString,
+  publishedDate: nonEmptyString,
+});
+
+const googleBookSchema = z
+  .object({
+    id: nonEmptyString,
+    volumeInfo: volumeInfoSchema,
+  })
+  .transform(({ id, volumeInfo }) => ({ id, ...volumeInfo }));
+
+const googleBooksPageSchema = z.object({
+  totalItems: z.int().nonnegative(),
+  // Google may omit items when a search page is empty.
+  items: z.array(z.unknown()).max(PAGE_SIZE).default([]),
+});
+
+export type Book = z.output<typeof googleBookSchema>;
 
 export interface BooksPage {
   books: Book[];
   nextStartIndex: number | null;
 }
-
-export const PAGE_SIZE = 20;
 
 export class BooksError extends Error {
   readonly code: "UPSTREAM_FAILURE" | "UPSTREAM_TIMEOUT";
@@ -31,53 +49,6 @@ function upstreamFailure(): BooksError {
     "UPSTREAM_FAILURE",
     "Unable to fetch books from Google Books.",
   );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function optionalString(value: unknown): string | null {
-  if (value === undefined || value === null) return null;
-  if (typeof value !== "string") throw upstreamFailure();
-  return value;
-}
-
-function normalizeBook(value: unknown): Book {
-  if (!isRecord(value) || typeof value.id !== "string" || !value.id.trim()) {
-    throw upstreamFailure();
-  }
-  const info = value.volumeInfo ?? {};
-  if (!isRecord(info)) throw upstreamFailure();
-  const authors = info.authors ?? [];
-  if (
-    !Array.isArray(authors) ||
-    !authors.every((author) => typeof author === "string")
-  ) {
-    throw upstreamFailure();
-  }
-  return {
-    id: value.id,
-    title: optionalString(info.title),
-    authors,
-    publisher: optionalString(info.publisher),
-    publishedDate: optionalString(info.publishedDate),
-  };
-}
-
-function parsePage(value: unknown): Book[] {
-  if (
-    !isRecord(value) ||
-    !Number.isInteger(value.totalItems) ||
-    Number(value.totalItems) < 0
-  ) {
-    throw upstreamFailure();
-  }
-  // Google may omit items when a search page is empty.
-  const items = value.items === undefined ? [] : value.items;
-  if (!Array.isArray(items) || items.length > PAGE_SIZE)
-    throw upstreamFailure();
-  return items.map(normalizeBook);
 }
 
 interface GoogleBooksOptions {
@@ -110,11 +81,15 @@ export class GoogleBooksService {
       signal.throwIfAborted();
       const response = await this.fetchPage(url, { signal });
       if (!response.ok) throw upstreamFailure();
-      const books = parsePage(await response.json());
+      const { items } = googleBooksPageSchema.parse(await response.json());
+      const books = items.flatMap((item) => {
+        const result = googleBookSchema.safeParse(item);
+        return result.success ? [result.data] : [];
+      });
       signal.throwIfAborted();
       return {
         books,
-        nextStartIndex: books.length ? startIndex + PAGE_SIZE : null,
+        nextStartIndex: items.length ? startIndex + PAGE_SIZE : null,
       };
     } catch (error) {
       if (signal.aborted) {

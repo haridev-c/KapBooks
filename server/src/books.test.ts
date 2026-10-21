@@ -29,50 +29,28 @@ async function startApi(
   return "http://127.0.0.1:" + address.port + "/api/books";
 }
 
-test("fetches exactly one page of 20 at the supplied offset and normalizes books", async () => {
+const completeBook = {
+  id: "one",
+  volumeInfo: {
+    title: "Book",
+    authors: ["A", "B"],
+    publisher: "Publisher",
+    publishedDate: "2024-05",
+  },
+};
+
+const normalizedBook = { id: completeBook.id, ...completeBook.volumeInfo };
+
+test("fetches exactly one page at the supplied offset and flattens complete books", async () => {
   const requests: URL[] = [];
   const service = new GoogleBooksService("test-key", {
     fetch: async (input) => {
       requests.push(new URL(String(input)));
-      return page([
-        {
-          id: "one",
-          volumeInfo: {
-            title: "Book",
-            authors: ["A", "B"],
-            publisher: "Publisher",
-            publishedDate: "2024-05",
-          },
-        },
-        { id: "two" },
-        { id: "one", volumeInfo: { title: "Duplicate" } },
-      ]);
+      return page([completeBook, { id: "incomplete" }, completeBook]);
     },
   });
   assert.deepEqual(await service.getBooks(20), {
-    books: [
-      {
-        id: "one",
-        title: "Book",
-        authors: ["A", "B"],
-        publisher: "Publisher",
-        publishedDate: "2024-05",
-      },
-      {
-        id: "two",
-        title: null,
-        authors: [],
-        publisher: null,
-        publishedDate: null,
-      },
-      {
-        id: "one",
-        title: "Duplicate",
-        authors: [],
-        publisher: null,
-        publishedDate: null,
-      },
-    ],
+    books: [normalizedBook, normalizedBook],
     nextStartIndex: 40,
   });
   assert.equal(requests.length, 1);
@@ -88,7 +66,7 @@ test("fetches exactly one page of 20 at the supplied offset and normalizes books
   });
 });
 
-test("stops only on an empty page, including omitted items", async () => {
+test("stops only on an empty upstream page, including omitted items", async () => {
   for (const items of [[], undefined]) {
     const service = new GoogleBooksService("test-key", {
       fetch: async () => page(items),
@@ -99,32 +77,108 @@ test("stops only on an empty page, including omitted items", async () => {
     });
   }
   const service = new GoogleBooksService("test-key", {
-    fetch: async () => Response.json({ totalItems: 0, items: [{ id: "one" }] }),
+    fetch: async () =>
+      Response.json({ totalItems: 0, items: [{ id: "incomplete" }] }),
   });
-  assert.equal((await service.getBooks(40)).nextStartIndex, 60);
+  assert.deepEqual(await service.getBooks(40), {
+    books: [],
+    nextStartIndex: 60,
+  });
 });
 
-test("rejects malformed upstream responses and book fields", async (t) => {
+test("ignores extra upstream fields without changing IDs or metadata", async () => {
+  const service = new GoogleBooksService("test-key", {
+    fetch: async () =>
+      Response.json({
+        totalItems: 1,
+        kind: "books#volumes",
+        items: [
+          {
+            id: " one ",
+            etag: "ignored",
+            volumeInfo: { ...completeBook.volumeInfo, description: "ignored" },
+          },
+        ],
+      }),
+  });
+  assert.deepEqual(await service.getBooks(0), {
+    books: [{ ...normalizedBook, id: " one " }],
+    nextStartIndex: 20,
+  });
+});
+
+test("skips invalid books while keeping complete books and the next offset", async (t) => {
+  const invalidBooks: unknown[] = [
+    null,
+    [],
+    12,
+    {},
+    { ...completeBook, id: " " },
+    { id: "one" },
+    { id: "one", volumeInfo: null },
+    { id: "one", volumeInfo: [] },
+  ];
+  for (const field of [
+    "title",
+    "authors",
+    "publisher",
+    "publishedDate",
+  ] as const) {
+    for (const value of [undefined, null, "", " ", 12, [], [""], [" "]]) {
+      invalidBooks.push({
+        ...completeBook,
+        volumeInfo: { ...completeBook.volumeInfo, [field]: value },
+      });
+    }
+  }
+  for (const invalidBook of invalidBooks) {
+    await t.test(JSON.stringify(invalidBook), async () => {
+      const service = new GoogleBooksService("test-key", {
+        fetch: async () => page([invalidBook, completeBook]),
+      });
+      assert.deepEqual(await service.getBooks(20), {
+        books: [normalizedBook],
+        nextStartIndex: 40,
+      });
+    });
+  }
+});
+
+test("continues after an entirely filtered page until the upstream page is empty", async () => {
+  const responses = [
+    page([{ id: "incomplete" }, null]),
+    page([completeBook]),
+    page([]),
+  ];
+  let calls = 0;
+  const service = new GoogleBooksService("test-key", {
+    fetch: async () => responses[calls++],
+  });
+  assert.deepEqual(await service.getBooks(0), {
+    books: [],
+    nextStartIndex: 20,
+  });
+  assert.deepEqual(await service.getBooks(20), {
+    books: [normalizedBook],
+    nextStartIndex: 40,
+  });
+  assert.deepEqual(await service.getBooks(40), {
+    books: [],
+    nextStartIndex: null,
+  });
+  assert.equal(calls, 3);
+});
+
+test("rejects malformed upstream page structures", async (t) => {
   for (const body of [
     null,
     {},
     { totalItems: -1 },
+    { totalItems: 1.5 },
     { totalItems: "1" },
     { totalItems: 1, items: null },
     { totalItems: 1, items: {} },
-    {
-      totalItems: 21,
-      items: Array.from({ length: 21 }, () => ({ id: "one" })),
-    },
-    ...[
-      {},
-      { id: " " },
-      { id: "one", volumeInfo: [] },
-      { id: "one", volumeInfo: { title: 12 } },
-      { id: "one", volumeInfo: { authors: [12] } },
-      { id: "one", volumeInfo: { publisher: false } },
-      { id: "one", volumeInfo: { publishedDate: 2020 } },
-    ].map((book) => ({ totalItems: 1, items: [book] })),
+    { totalItems: 21, items: Array.from({ length: 21 }, () => completeBook) },
   ]) {
     await t.test(JSON.stringify(body), async () => {
       const service = new GoogleBooksService("test-key", {
@@ -143,7 +197,13 @@ test("GET /api/books defaults to zero and forwards explicit offsets", async (t) 
       return { books: [], nextStartIndex: null };
     },
   });
-  for (const query of ["", "?startIndex=0", "?startIndex=20"]) {
+  const largestStartIndex = Number.MAX_SAFE_INTEGER - 20;
+  for (const query of [
+    "",
+    "?startIndex=0",
+    "?startIndex=20",
+    `?startIndex=${largestStartIndex}`,
+  ]) {
     const response = await fetch(url + query);
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), {
@@ -151,7 +211,7 @@ test("GET /api/books defaults to zero and forwards explicit offsets", async (t) 
       nextStartIndex: null,
     });
   }
-  assert.deepEqual(offsets, [0, 0, 20]);
+  assert.deepEqual(offsets, [0, 0, 20, largestStartIndex]);
 });
 
 test("rejects invalid offsets without calling Google", async (t) => {
@@ -168,10 +228,13 @@ test("rejects invalid offsets without calling Google", async (t) => {
     "?startIndex=1.5",
     "?startIndex=abc",
     "?startIndex=1e2",
+    "?startIndex=01",
+    "?startIndex=0x14",
     "?startIndex=%2020",
     "?startIndex=0&startIndex=20",
     "?startIndex=9007199254740992",
     "?startIndex=9007199254740991",
+    `?startIndex=${Number.MAX_SAFE_INTEGER - 19}`,
   ]) {
     const response = await fetch(url + query);
     assert.equal(response.status, 400, query);
@@ -188,22 +251,14 @@ test("GET /api/books returns normalized books and the next offset", async (t) =>
     new GoogleBooksService("test-key", {
       fetch: async () => {
         calls++;
-        return page([{ id: "one" }]);
+        return page([{ id: "incomplete" }, completeBook]);
       },
     }),
   );
   const response = await fetch(url + "?startIndex=40");
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), {
-    books: [
-      {
-        id: "one",
-        title: null,
-        authors: [],
-        publisher: null,
-        publishedDate: null,
-      },
-    ],
+    books: [normalizedBook],
     nextStartIndex: 60,
   });
   assert.equal(calls, 1);
