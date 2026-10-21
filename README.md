@@ -1,12 +1,12 @@
-# Book List Assignment
+# KapBooks
 
 Angular 22 + NgRx Store/Effects with an Express 5 wrapper for Google Books.
-The list loads 20 books on startup and appends more as you scroll. Each Express
+The list fetches up to 20 source records per page and appends more as you scroll. Each Express
 request makes exactly one Google request. Each page success or failure is also
 logged in the browser console.
 
-The client uses default Angular Material styling and the rough layout of the
-[reference](Books-1.png). Books support local search and metadata CRUD; courses
+The client uses Angular Material with a light green KapBooks theme.
+Books support local search and metadata CRUD; courses
 are ordered book collections. All mutations live in NgRx memory: **refresh resets
 created records, edits, deletions, and courses**. The server remains read-only.
 
@@ -16,10 +16,10 @@ created records, edits, deletions, and courses**. The server remains read-only.
   query words must match, case-insensitively. Use **Load more books** during search
   to fetch more pages; outside search, scrolling loads automatically.
 - Book dialogs require a trimmed title, at least one author (one per line),
-  publisher, and a valid date. Choose year, month, or day precision. Duplicate
-  titles are allowed. Cancel or dismiss discards unsaved drafts.
-- `/books/:id` shows metadata and linked courses. Deletion is blocked while a
-  course references the book; remove those references first.
+  publisher, and a valid full publication date. Use the calendar picker or type
+  `YYYY-MM-DD`. Descriptions are optional plain text. Duplicate titles are allowed. Cancel or dismiss discards unsaved drafts.
+- `/books/:id` shows metadata, a description when available, and linked courses.
+  Deletion is blocked while a course references the book; remove those references first.
 - `/courses` and `/courses/:id` manage named reading lists. Description and books
   are optional; duplicate course names are allowed. Add loaded books once per
   course and arrange them with Move up/down controls.
@@ -84,8 +84,9 @@ Example response (illustrative data):
       "id": "google-volume-id",
       "title": "Example Kaplan Book",
       "authors": ["Kaplan Test Prep"],
-      "publisher": null,
-      "publishedDate": "2024"
+      "publisher": "Kaplan Publishing",
+      "publishedDate": "2024-05-15",
+      "description": "Practice questions and study guidance."
     }
   ],
   "nextStartIndex": 20
@@ -96,8 +97,10 @@ Express requests up to 20 books at the supplied offset. A nonempty page advances
 `nextStartIndex` by 20, even if the page is short. An empty page returns
 `{ "books": [], "nextStartIndex": null }`. Pagination does not rely on Google's
 `totalItems`. Incomplete records are skipped; a page of skipped records still
-advances the offset. Date precision is preserved. Malformed responses cause an
-error. The client retains its nullable metadata contract for compatibility.
+advances the offset. Only real calendar dates in `YYYY-MM-DD` format are accepted;
+records with partial or invalid dates are skipped. Descriptions are optional; source
+HTML is converted to plain text and blank descriptions are omitted. Malformed
+responses cause an error. The client retains nullable metadata for compatibility.
 
 NgRx retains the books, loading/error state, and next offset. It appends pages,
 deduplicating by ID while preserving first-seen content and order. The viewport
@@ -139,10 +142,11 @@ single-page requests, normalization, end detection, errors/timeouts, append and
 deduplication, concurrent-load suppression, retry, and observer cleanup.
 Angular tests simulate intersections without relying on browser layout.
 
-Feature unit tests and maintenance of existing client unit tests are deferred.
-This feature phase uses a production client build and browser acceptance checks
-for CRUD, search/paging/retry, date precision, course references/order, refresh
-reset, unavailable detail links, keyboard use, and mobile layout.
+Focused client tests cover the date picker, full-date validation, date round trips,
+optional descriptions, and conditional detail rendering. Existing list integration
+and state tests predate the routed UI and have known failures. Browser acceptance
+checks cover CRUD, search/paging/retry, course references/order, refresh reset,
+unavailable detail links, keyboard use, and mobile layout.
 
 After building, run the compiled API with `npm start` inside `server`.
 The static client is in `client/dist/client/browser`. Production hosting must

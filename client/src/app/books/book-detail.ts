@@ -26,6 +26,10 @@ import { LibraryDialogs } from '../shared/library-dialogs';
           <p>Authors: {{ book.authors.join(', ') || 'Unknown' }}</p>
           <p>Publisher: {{ book.publisher || 'Unknown' }}</p>
           <p>Published date: {{ book.publishedDate || 'Unknown' }}</p>
+          @if (book.description) {
+            <h2>Description</h2>
+            <p class="preserve-lines">{{ book.description }}</p>
+          }
         </mat-card-content></mat-card
       >
       <h2>Used in courses</h2>

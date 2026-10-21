@@ -1,14 +1,25 @@
 import { z } from "zod";
+import { convert } from "html-to-text";
 
 export const PAGE_SIZE = 20;
 
-const nonEmptyString = z.string().min(1);
+const nonEmptyString = z.string().refine((value) => value.trim().length > 0);
 
 const volumeInfoSchema = z.object({
   title: nonEmptyString,
   authors: z.array(nonEmptyString).min(1),
   publisher: nonEmptyString,
-  publishedDate: nonEmptyString,
+  publishedDate: z.iso.date().refine((value) => !value.startsWith("0000-")),
+  description: z.preprocess(
+    (value) =>
+      typeof value === "string"
+        ? convert(value, {
+            wordwrap: false,
+            selectors: [{ selector: "a", options: { ignoreHref: true } }],
+          }).trim() || undefined
+        : undefined,
+    z.string().optional(),
+  ),
 });
 
 const googleBookSchema = z

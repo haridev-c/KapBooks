@@ -3,6 +3,7 @@ export interface Book {
   title: string | null;
   authors: string[];
   publisher: string | null;
+  description?: string;
   publishedDate: string | null;
 }
 

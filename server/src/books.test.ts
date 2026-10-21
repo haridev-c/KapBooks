@@ -35,11 +35,81 @@ const completeBook = {
     title: "Book",
     authors: ["A", "B"],
     publisher: "Publisher",
-    publishedDate: "2024-05",
+    publishedDate: "2024-05-15",
   },
 };
 
 const normalizedBook = { id: completeBook.id, ...completeBook.volumeInfo };
+
+test("accepts only complete, real publication dates without filling in missing parts", async () => {
+  const dates = [
+    "2024",
+    "2024-05",
+    "2024-2-01",
+    "2023-02-29",
+    "1900-02-29",
+    "2024-04-31",
+    "2024-00-10",
+    "2024-13-01",
+    "2024-01-00",
+    "0000-01-01",
+    "2024-05-15T00:00:00Z",
+    " 2024-05-15 ",
+    "2024-02-29",
+    "2000-02-29",
+    "0001-01-01",
+  ];
+  const service = new GoogleBooksService("test-key", {
+    fetch: async () =>
+      page(
+        dates.map((publishedDate) => ({
+          ...completeBook,
+          volumeInfo: { ...completeBook.volumeInfo, publishedDate },
+        })),
+      ),
+  });
+  const result = await service.getBooks(0);
+  assert.deepEqual(
+    result.books.map((book) => book.publishedDate),
+    ["2024-02-29", "2000-02-29", "0001-01-01"],
+  );
+  assert.equal(result.nextStartIndex, 20);
+});
+
+test("returns optional descriptions as readable plain text without dropping books", async () => {
+  const descriptions = [
+    undefined,
+    null,
+    "",
+    "  ",
+    123,
+    "<p> </p>",
+    "<p>A &amp; B</p><p>Read <b>more</b> at <a href='https://example.com'>our site</a>.</p>",
+  ];
+  const service = new GoogleBooksService("test-key", {
+    fetch: async () =>
+      page(
+        descriptions.map((description) => ({
+          ...completeBook,
+          volumeInfo: { ...completeBook.volumeInfo, description },
+        })),
+      ),
+  });
+  const { books } = await service.getBooks(0);
+  assert.equal(books.length, descriptions.length);
+  assert.deepEqual(
+    books.map((book) => book.description),
+    [
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "A & B\n\nRead more at our site.",
+    ],
+  );
+});
 
 test("fetches exactly one page at the supplied offset and flattens complete books", async () => {
   const requests: URL[] = [];
@@ -96,7 +166,7 @@ test("ignores extra upstream fields without changing IDs or metadata", async () 
           {
             id: " one ",
             etag: "ignored",
-            volumeInfo: { ...completeBook.volumeInfo, description: "ignored" },
+            volumeInfo: { ...completeBook.volumeInfo, language: "ignored" },
           },
         ],
       }),
