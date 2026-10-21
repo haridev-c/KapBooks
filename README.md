@@ -125,28 +125,14 @@ Errors use `{ "error": { "code": "...", "message": "..." } }`:
 Errors do not expose upstream details or credentials. There is no cache or
 automatic retry.
 
-## Tests and builds
+## Builds
 
 From the repository root:
 
 ```bash
-npm test --prefix server
-npm test --prefix client -- --watch=false
 npm run build --prefix server
 npm run build --prefix client
 ```
-
-Tests mock Google and require no API key or external network. Server integration
-tests use temporary localhost ports. Coverage includes offset validation,
-single-page requests, normalization, end detection, errors/timeouts, append and
-deduplication, concurrent-load suppression, retry, and observer cleanup.
-Angular tests simulate intersections without relying on browser layout.
-
-Focused client tests cover the date picker, full-date validation, date round trips,
-optional descriptions, and conditional detail rendering. Existing list integration
-and state tests predate the routed UI and have known failures. Browser acceptance
-checks cover CRUD, search/paging/retry, course references/order, refresh reset,
-unavailable detail links, keyboard use, and mobile layout.
 
 After building, run the compiled API with `npm start` inside `server`.
 The static client is in `client/dist/client/browser`. Production hosting must
