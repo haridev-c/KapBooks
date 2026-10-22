@@ -1,28 +1,24 @@
-import express from "express";
-import { z } from "zod";
-import { BooksError, PAGE_SIZE, type GoogleBooksService } from "./books.ts";
+import express from 'express';
+import { z } from 'zod';
+import { BooksError, PAGE_SIZE, type GoogleBooksService } from './books.ts';
 
 const startIndexSchema = z
   .string()
   .regex(/^(0|[1-9]\d*)$/)
-  .default("0")
+  .default('0')
   .transform(Number)
-  .refine(
-    (value) =>
-      Number.isSafeInteger(value) && Number.isSafeInteger(value + PAGE_SIZE),
-  );
+  .refine((value) => Number.isSafeInteger(value) && Number.isSafeInteger(value + PAGE_SIZE));
 
-export function createApp(booksService: Pick<GoogleBooksService, "getBooks">) {
+export function createApp(booksService: Pick<GoogleBooksService, 'getBooks'>) {
   const app = express();
 
-  app.get("/api/books", async (req, res) => {
+  app.get('/api/books', async (req, res) => {
     const startIndex = startIndexSchema.safeParse(req.query.startIndex);
     if (!startIndex.success) {
       res.status(400).json({
         error: {
-          code: "INVALID_START_INDEX",
-          message:
-            "startIndex must be a non-negative safe integer with room for the next page.",
+          code: 'INVALID_START_INDEX',
+          message: 'startIndex must be a non-negative safe integer with room for the next page.',
         },
       });
       return;
@@ -33,10 +29,7 @@ export function createApp(booksService: Pick<GoogleBooksService, "getBooks">) {
       const failure =
         error instanceof BooksError
           ? error
-          : new BooksError(
-              "UPSTREAM_FAILURE",
-              "Unable to fetch books from Google Books.",
-            );
+          : new BooksError('UPSTREAM_FAILURE', 'Unable to fetch books from Google Books.');
       res.status(failure.status).json({
         error: { code: failure.code, message: failure.message },
       });

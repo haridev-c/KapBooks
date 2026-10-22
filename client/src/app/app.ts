@@ -195,9 +195,11 @@ export class App {
     });
   }
   toggleMenu() {
-    this.mobile()
-      ? this.mobileOpen.update((open) => !open)
-      : this.desktopOpen.update((open) => !open);
+    if (this.mobile()) {
+      this.mobileOpen.update((open) => !open);
+    } else {
+      this.desktopOpen.update((open) => !open);
+    }
   }
   closeMobile() {
     this.mobileOpen.set(false);

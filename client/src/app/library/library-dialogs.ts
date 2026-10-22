@@ -22,11 +22,14 @@ export class LibraryDialogs {
       })
       .afterClosed()
       .subscribe((value) => {
-        if (value) book ? this.books.update({ ...value, id: book.id }) : this.books.create(value);
+        if (!value) return;
+        if (book) this.books.update({ ...value, id: book.id });
+        else this.books.create(value);
       });
   }
   async editCourse(course: Course | null = null) {
-    const { CourseFormDialog } = await import('../courses/ui/course-form-dialog/course-form-dialog');
+    const { CourseFormDialog } =
+      await import('../courses/ui/course-form-dialog/course-form-dialog');
     this.dialog
       .open<InstanceType<typeof CourseFormDialog>, Course | null, Omit<Course, 'id'>>(
         CourseFormDialog,
@@ -37,8 +40,9 @@ export class LibraryDialogs {
       )
       .afterClosed()
       .subscribe((value) => {
-        if (value)
-          course ? this.courses.update({ ...value, id: course.id }) : this.courses.create(value);
+        if (!value) return;
+        if (course) this.courses.update({ ...value, id: course.id });
+        else this.courses.create(value);
       });
   }
   deleteBook(book: Book, onDeleted?: () => void) {

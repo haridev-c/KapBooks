@@ -1,5 +1,5 @@
-import { z } from "zod";
-import { convert } from "html-to-text";
+import { z } from 'zod';
+import { convert } from 'html-to-text';
 
 export const PAGE_SIZE = 20;
 
@@ -9,13 +9,13 @@ const volumeInfoSchema = z.object({
   title: nonEmptyString,
   authors: z.array(nonEmptyString).min(1),
   publisher: nonEmptyString,
-  publishedDate: z.iso.date().refine((value) => !value.startsWith("0000-")),
+  publishedDate: z.iso.date().refine((value) => !value.startsWith('0000-')),
   description: z.preprocess(
     (value) =>
-      typeof value === "string"
+      typeof value === 'string'
         ? convert(value, {
             wordwrap: false,
-            selectors: [{ selector: "a", options: { ignoreHref: true } }],
+            selectors: [{ selector: 'a', options: { ignoreHref: true } }],
           }).trim() || undefined
         : undefined,
     z.string().optional(),
@@ -43,23 +43,20 @@ export interface BooksPage {
 }
 
 export class BooksError extends Error {
-  readonly code: "UPSTREAM_FAILURE" | "UPSTREAM_TIMEOUT";
+  readonly code: 'UPSTREAM_FAILURE' | 'UPSTREAM_TIMEOUT';
 
-  constructor(code: BooksError["code"], message: string) {
+  constructor(code: BooksError['code'], message: string) {
     super(message);
     this.code = code;
   }
 
   get status(): number {
-    return this.code === "UPSTREAM_TIMEOUT" ? 504 : 502;
+    return this.code === 'UPSTREAM_TIMEOUT' ? 504 : 502;
   }
 }
 
 function upstreamFailure(): BooksError {
-  return new BooksError(
-    "UPSTREAM_FAILURE",
-    "Unable to fetch books from Google Books.",
-  );
+  return new BooksError('UPSTREAM_FAILURE', 'Unable to fetch books from Google Books.');
 }
 
 interface GoogleBooksOptions {
@@ -80,9 +77,9 @@ export class GoogleBooksService {
 
   async getBooks(startIndex: number): Promise<BooksPage> {
     const signal = AbortSignal.timeout(this.requestTimeoutMs);
-    const url = new URL("https://www.googleapis.com/books/v1/volumes");
+    const url = new URL('https://www.googleapis.com/books/v1/volumes');
     url.search = new URLSearchParams({
-      q: "kaplan test prep",
+      q: 'kaplan test prep',
       startIndex: String(startIndex),
       maxResults: String(PAGE_SIZE),
       key: this.apiKey,
@@ -104,10 +101,7 @@ export class GoogleBooksService {
       };
     } catch (error) {
       if (signal.aborted) {
-        throw new BooksError(
-          "UPSTREAM_TIMEOUT",
-          "Google Books request timed out.",
-        );
+        throw new BooksError('UPSTREAM_TIMEOUT', 'Google Books request timed out.');
       }
       if (error instanceof BooksError) throw error;
       throw upstreamFailure();

@@ -154,6 +154,28 @@ network access. Timeout cases use controlled abort signals rather than real dela
 Tests live under `server/tests` and are excluded from the production build.
 Startup and environment validation tests are deferred.
 
+## Linting and formatting
+
+The client uses ESLint, and the server uses Oxlint to support its TypeScript 7
+compiler. Both projects use Prettier for formatting. Client linting also checks
+Angular inline and external templates, including accessibility rules.
+The setup follows the [typescript-eslint recommended configuration](https://typescript-eslint.io/getting-started/)
+and [Angular ESLint configuration](https://github.com/angular-eslint/angular-eslint/blob/main/docs/CONFIGURING_ESLINT.md).
+
+From the repository root:
+
+```bash
+npm run lint --prefix client
+npm run lint --prefix server
+npm run format:check --prefix client
+npm run format:check --prefix server
+```
+
+Use `npm run lint:fix --prefix client` or `--prefix server` to apply automatic
+lint fixes, and `npm run format --prefix client` or `--prefix server` to format
+files. Generated output, dependencies, coverage, and lockfiles are excluded from
+formatting.
+
 ## Builds
 
 From the repository root:
