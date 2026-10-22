@@ -19,8 +19,6 @@
       </button>
     }
   </mat-form-field>
-  <h2>{{ books.searching() ? 'Search results' : 'All books' }}</h2>
-  <p>{{ books.visibleBooks().length }} shown · {{ books.books().length }} loaded</p>
   <ul class="card-grid" aria-label="Books" [attr.aria-busy]="books.state().loading">
     @for (book of books.visibleBooks(); track book.id) {
       <li>
