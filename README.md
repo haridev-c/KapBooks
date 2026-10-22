@@ -31,7 +31,7 @@ created records, edits, deletions, and courses**. The server remains read-only.
   Courses. Facades connect UI to state; selectors derive search and relationships;
   effects handle API requests, the cross-feature deletion guard, and snackbars.
 
-Persistence, lesson authoring, enrollment, progress tracking, and Docker are deferred.
+Persistence, lesson authoring, enrollment, and progress tracking are deferred.
 
 ## Client structure
 
@@ -82,6 +82,40 @@ npm start
 
 Open <http://localhost:4200>. The development proxy forwards `/api/**` to Express
 on port 3000.
+
+## Run with Docker Compose
+
+Install Docker with the Compose plugin. From the repository root, copy
+`server/.env.example` to `server/.env` if you have not already done so, and set
+`GOOGLE_BOOKS_API_KEY` in that file. Then run:
+
+```bash
+docker compose up --build -d
+```
+
+Open <http://localhost:8080>. To choose another host port, run
+`CLIENT_PORT=4200 docker compose up --build -d`.
+
+The client image builds Angular and serves its production files with Nginx,
+including an `index.html` fallback for routes such as `/books` and `/courses`.
+Nginx forwards `/api` requests, preserving paths and query strings, to
+`server:3000` through Docker's DNS and the shared `books` network. Only the
+client publishes a host port; the API is accessible through Nginx.
+
+The server image compiles TypeScript and runs the API as the non-root `node`
+user with production dependencies. Compose injects `server/.env` at runtime;
+environment files are excluded from both image build contexts. Changes to
+source require rebuilding the images.
+
+```bash
+docker compose logs -f
+docker compose down
+```
+
+To check the proxy without calling Google Books, request
+<http://localhost:8080/api/books?startIndex=invalid>; the API should return
+HTTP 400 with code `INVALID_START_INDEX`. Refreshing
+<http://localhost:8080/courses> should still load the Angular app.
 
 ## Pagination and scrolling
 
