@@ -1,3 +1,142 @@
-/* You can add global styles to this file, and also import other style files */
+@import '@angular/material/prebuilt-themes/azure-blue.css';
 
-@import 'tailwindcss';
+html {
+  color-scheme: light;
+  --mat-sys-primary: #2e6848;
+  --mat-sys-on-primary: #ffffff;
+  --mat-sys-primary-container: #cfeecf;
+  --mat-sys-on-primary-container: #133c25;
+  --mat-sys-inverse-primary: #a1d4af;
+  --mat-sys-secondary: #52634f;
+  --mat-sys-on-secondary: #ffffff;
+  --mat-sys-secondary-container: #d5e8ce;
+  --mat-sys-on-secondary-container: #263623;
+  --mat-sys-tertiary: #3a6560;
+  --mat-sys-on-tertiary: #ffffff;
+  --mat-sys-tertiary-container: #bdebe3;
+  --mat-sys-on-tertiary-container: #174c46;
+  --mat-sys-surface: #fafcf7;
+  --mat-sys-surface-dim: #d9ddd3;
+  --mat-sys-surface-bright: #fafcf7;
+  --mat-sys-surface-container-lowest: #ffffff;
+  --mat-sys-surface-container-low: #f3f7ef;
+  --mat-sys-surface-container: #edf2e8;
+  --mat-sys-surface-container-high: #e7ecdf;
+  --mat-sys-surface-container-highest: #e1e7d9;
+  --mat-sys-surface-variant: #dfe7da;
+  --mat-sys-on-surface: #202b22;
+  --mat-sys-on-surface-variant: #465246;
+  --mat-sys-outline: #748371;
+  --mat-sys-outline-variant: #c4d1bf;
+  --mat-sys-surface-tint: #2e6848;
+}
+body {
+  margin: 0;
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+}
+* {
+  box-sizing: border-box;
+}
+h1 {
+  font: var(--mat-sys-headline-large);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+h2 {
+  font: var(--mat-sys-title-large);
+}
+h3 {
+  font: var(--mat-sys-title-medium);
+}
+p,
+li {
+  overflow-wrap: anywhere;
+}
+a {
+  color: var(--mat-sys-primary);
+}
+button,
+a,
+input,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+.page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.search-field {
+  width: min(100%, 720px);
+  margin-bottom: 20px;
+}
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  list-style: none;
+  margin: 24px 0;
+  padding: 0;
+}
+.card-grid > li {
+  min-width: 0;
+}
+mat-card-title {
+  overflow-wrap: anywhere;
+}
+.load-status {
+  padding: 16px 0;
+}
+.sentinel {
+  height: 1px;
+}
+.form-fields {
+  display: flex !important;
+  flex-direction: column;
+  gap: 12px;
+}
+.form-fields > * {
+  flex-shrink: 0;
+}
+.form-fields mat-form-field {
+  width: 100%;
+}
+.reading-list {
+  padding-left: 24px;
+}
+.reading-list li {
+  margin-bottom: 20px;
+  padding-left: 4px;
+}
+.reading-list .actions {
+  margin-top: 8px;
+}
+.preserve-lines {
+  white-space: pre-wrap;
+}
+.skip-link {
+  position: fixed;
+  top: -100px;
+  left: 16px;
+  z-index: 1000;
+  padding: 12px;
+  background: var(--mat-sys-surface);
+}
+.skip-link:focus {
+  top: 8px;
+}
+@media (max-width: 1000px) {
+  .card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

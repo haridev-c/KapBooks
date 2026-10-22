@@ -1,0 +1,56 @@
+<section aria-labelledby="books-heading">
+  <div class="page-heading">
+    <h1 id="books-heading">Books</h1>
+    <button mat-flat-button (click)="dialogs.editBook()">Create new book</button>
+  </div>
+  <mat-form-field class="search-field">
+    <mat-label>Search loaded books</mat-label>
+    <input
+      matInput
+      type="search"
+      #searchInput
+      [value]="books.state().query"
+      (input)="books.search(searchInput.value)"
+    />
+    <mat-hint>Title, authors, or publisher. Load more to expand your search.</mat-hint>
+    @if (books.state().query) {
+      <button mat-button matSuffix (click)="books.search('')" aria-label="Clear search">
+        Clear
+      </button>
+    }
+  </mat-form-field>
+  <ul class="card-grid" aria-label="Books" [attr.aria-busy]="books.state().loading">
+    @for (book of books.visibleBooks(); track book.id) {
+      <li>
+        <app-book-card
+          [book]="book"
+          (edit)="dialogs.editBook($event)"
+          (remove)="dialogs.deleteBook($event)"
+        />
+      </li>
+    }
+  </ul>
+  <div class="load-status" aria-live="polite">
+    @if (!books.visibleBooks().length && !books.state().loading && !books.state().error) {
+      <p>
+        {{ books.searching() ? 'No loaded books match your search.' : 'No books available yet.' }}
+      </p>
+    }
+    @if (books.state().loading) {
+      <mat-progress-bar mode="indeterminate" aria-label="Loading books" />
+      <p>Loading books…</p>
+    }
+    @if (books.state().error; as error) {
+      <p role="alert">{{ error.message }}</p>
+      <button mat-stroked-button (click)="books.retry()">Retry</button>
+    }
+    @if (books.state().nextStartIndex === null) {
+      <p>All available pages loaded.</p>
+    } @else if (books.searching() && !books.state().error) {
+      <button mat-stroked-button [disabled]="books.state().loading" (click)="books.load()">
+        Load more books
+      </button>
+    }
+  </div>
+  <div #sentinel class="sentinel" aria-hidden="true"></div>
+</section>
