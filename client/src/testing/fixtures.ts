@@ -1,5 +1,5 @@
-import { Book } from '../app/books/book';
-import { Course } from '../app/courses/course';
+import { Book } from '../app/books/data-access/book';
+import { Course } from '../app/courses/data-access/course';
 
 export const book = (id = 'b1', overrides: Partial<Book> = {}): Book => ({
   id,

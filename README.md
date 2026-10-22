@@ -33,6 +33,20 @@ created records, edits, deletions, and courses**. The server remains read-only.
 
 Persistence, lesson authoring, enrollment, progress tracking, and Docker are deferred.
 
+## Client structure
+
+Under `client/src/app`, `books/` and `courses/` each group their files into:
+
+- `data-access/`: models, HTTP requests, facades, and NgRx state, selectors, actions, and effects.
+- `pages/`: routed list and detail screens, with a folder per screen.
+- `ui/`: cards and form dialogs, with a folder per UI element. The publication date
+  adapter lives beside the book form that uses it.
+
+`library/` coordinates books and courses through dialogs, deletion rules, and
+notifications. `shared/` holds reusable UI and form helpers without feature-specific
+dependencies. Tests live beside the files they exercise; common test helpers and
+fixtures live in `client/src/testing/`.
+
 ## Setup and run
 
 Use Node.js 24.15+ on the 24.x line, or Node.js 26+ (verified with 26.12.0),
