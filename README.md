@@ -125,6 +125,21 @@ Errors use `{ "error": { "code": "...", "message": "..." } }`:
 Errors do not expose upstream details or credentials. There is no cache or
 automatic retry.
 
+## Server tests
+
+Run the server service unit tests and Express API integration tests with Vitest:
+
+```bash
+npm test --prefix server
+npm run test:typecheck --prefix server
+```
+
+Use `npm run test:watch --prefix server` for watch mode. Tests use mocked Google
+responses and an ephemeral loopback HTTP server; they need no API key or external
+network access. Timeout cases use controlled abort signals rather than real delays.
+Tests live under `server/tests` and are excluded from the production build.
+Startup and environment validation tests are deferred.
+
 ## Builds
 
 From the repository root:
