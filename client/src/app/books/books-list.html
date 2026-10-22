@@ -8,8 +8,9 @@
     <input
       matInput
       type="search"
+      #searchInput
       [value]="books.state().query"
-      (input)="books.search($any($event.target).value)"
+      (input)="books.search(searchInput.value)"
     />
     <mat-hint>Title, authors, or publisher. Load more to expand your search.</mat-hint>
     @if (books.state().query) {

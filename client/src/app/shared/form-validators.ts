@@ -1,10 +1,7 @@
-import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
+import { pattern, required, SchemaPath } from '@angular/forms/signals';
 
-export const nonBlank: ValidatorFn = (control: AbstractControl): ValidationErrors | null =>
-  typeof control.value === 'string' && control.value.trim() ? null : { required: true };
-
-export const authorsRequired: ValidatorFn = (control: AbstractControl): ValidationErrors | null =>
-  typeof control.value === 'string' &&
-  control.value.split('\n').some((author: string) => author.trim())
-    ? null
-    : { required: true };
+/** Require at least one non-whitespace character, including in multiline fields. */
+export function nonBlank(path: SchemaPath<string>) {
+  required(path);
+  pattern(path, /\S/);
+}

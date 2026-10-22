@@ -1,5 +1,5 @@
-import { Component, inject } from '@angular/core';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Component, inject, signal } from '@angular/core';
+import { form, FormField, FormRoot, required } from '@angular/forms/signals';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -12,12 +12,13 @@ import {
 } from '@angular/material/core';
 import { PublicationDateAdapter } from '../shared/publication-date-adapter';
 import { Book } from './book';
-import { authorsRequired, nonBlank } from '../shared/form-validators';
+import { nonBlank } from '../shared/form-validators';
 
 @Component({
   selector: 'app-book-form-dialog',
   imports: [
-    ReactiveFormsModule,
+    FormField,
+    FormRoot,
     MatDialogModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -33,35 +34,34 @@ import { authorsRequired, nonBlank } from '../shared/form-validators';
   ],
   template: `
     <h2 mat-dialog-title>{{ book ? 'Edit book' : 'Create new book' }}</h2>
-    <form [formGroup]="form" (ngSubmit)="save()">
+    <form [formRoot]="form">
       <mat-dialog-content class="form-fields">
         <p>
           Changes are kept for this session only. Description is optional; all other fields are
           required.
         </p>
         <mat-form-field>
-          <mat-label>Title</mat-label><input matInput formControlName="title" required />
+          <mat-label>Title</mat-label><input matInput [formField]="form.title" />
           <mat-error>Enter a title.</mat-error>
         </mat-form-field>
         <mat-form-field>
           <mat-label>Authors</mat-label
-          ><textarea matInput formControlName="authors" rows="3" required></textarea>
+          ><textarea matInput [formField]="form.authors" rows="3"></textarea>
           <mat-hint>One author per line</mat-hint><mat-error>Enter at least one author.</mat-error>
         </mat-form-field>
         <mat-form-field>
-          <mat-label>Publisher</mat-label><input matInput formControlName="publisher" required />
+          <mat-label>Publisher</mat-label><input matInput [formField]="form.publisher" />
           <mat-error>Enter a publisher.</mat-error>
         </mat-form-field>
         <mat-form-field>
           <mat-label>Published date</mat-label>
           <input
             matInput
-            formControlName="publishedDate"
+            [formField]="form.publishedDate"
             [matDatepicker]="picker"
             placeholder="YYYY-MM-DD"
             [min]="minDate"
             [max]="maxDate"
-            required
           />
           <mat-datepicker-toggle matIconSuffix [for]="picker" />
           <mat-datepicker #picker startView="multi-year" />
@@ -70,7 +70,7 @@ import { authorsRequired, nonBlank } from '../shared/form-validators';
         </mat-form-field>
         <mat-form-field>
           <mat-label>Description (optional)</mat-label>
-          <textarea matInput formControlName="description" rows="5"></textarea>
+          <textarea matInput [formField]="form.description" rows="5"></textarea>
         </mat-form-field>
       </mat-dialog-content>
       <mat-dialog-actions align="end">
@@ -86,26 +86,27 @@ export class BookFormDialog {
   private readonly dates = inject<DateAdapter<Date>>(DateAdapter);
   readonly minDate = this.dates.createDate(1, 0, 1);
   readonly maxDate = this.dates.createDate(9999, 11, 31);
-  readonly form = new FormGroup({
-    title: new FormControl(this.book?.title ?? '', { nonNullable: true, validators: [nonBlank] }),
-    authors: new FormControl(this.book?.authors.join('\n') ?? '', {
-      nonNullable: true,
-      validators: [authorsRequired],
-    }),
-    publisher: new FormControl(this.book?.publisher ?? '', {
-      nonNullable: true,
-      validators: [nonBlank],
-    }),
-    publishedDate: new FormControl<Date | null>(this.dates.parse(this.book?.publishedDate, null), {
-      validators: [Validators.required],
-    }),
-    description: new FormControl(this.book?.description ?? '', { nonNullable: true }),
+  private readonly model = signal({
+    title: this.book?.title ?? '',
+    authors: this.book?.authors.join('\n') ?? '',
+    publisher: this.book?.publisher ?? '',
+    publishedDate: this.dates.parse(this.book?.publishedDate, null),
+    description: this.book?.description ?? '',
   });
+  readonly form = form(
+    this.model,
+    (path) => {
+      nonBlank(path.title);
+      nonBlank(path.authors);
+      nonBlank(path.publisher);
+      required(path.publishedDate);
+    },
+    { submission: { action: async () => this.save() } },
+  );
 
   save() {
-    this.form.markAllAsTouched();
-    if (this.form.invalid) return;
-    const { title, authors, publisher, publishedDate, description } = this.form.getRawValue();
+    const { title, authors, publisher, publishedDate, description } = this.model();
+    if (!publishedDate) return;
     this.dialog.close({
       title: title.trim(),
       authors: authors
@@ -113,7 +114,7 @@ export class BookFormDialog {
         .map((author) => author.trim())
         .filter(Boolean),
       publisher: publisher.trim(),
-      publishedDate: this.dates.format(publishedDate!, 'input'),
+      publishedDate: this.dates.format(publishedDate, 'input'),
       description: description.trim() || undefined,
     });
   }

@@ -1,13 +1,13 @@
-import { Component, inject, signal } from '@angular/core';
+import { afterRenderEffect, Component, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
-import { map } from 'rxjs';
+import { filter, map } from 'rxjs';
 
 @Component({
   imports: [
@@ -23,7 +23,7 @@ import { map } from 'rxjs';
   selector: 'app-root',
   template: `
     <a class="skip-link" href="#main-content">Skip to content</a>
-    <mat-toolbar class="app-toolbar">
+    <mat-toolbar class="app-toolbar" role="banner">
       <button
         mat-icon-button
         (click)="toggleMenu()"
@@ -33,7 +33,7 @@ import { map } from 'rxjs';
       >
         <mat-icon>menu</mat-icon>
       </button>
-      <a class="brand" routerLink="/books" aria-label="KapBooks home">
+      <a class="brand" routerLink="/books">
         <span class="brand-mark" aria-hidden="true">K</span>
         <span>KapBooks</span>
       </a>
@@ -73,7 +73,7 @@ import { map } from 'rxjs';
         </nav>
       </mat-sidenav>
       <mat-sidenav-content>
-        <main id="main-content" tabindex="-1"><router-outlet /></main>
+        <main #mainContent id="main-content" tabindex="-1"><router-outlet /></main>
       </mat-sidenav-content>
     </mat-sidenav-container>
   `,
@@ -177,6 +177,10 @@ import { map } from 'rxjs';
   `,
 })
 export class App {
+  private readonly mainContent = viewChild.required<ElementRef<HTMLElement>>('mainContent');
+  private readonly navigation = toSignal(
+    inject(Router).events.pipe(filter((event) => event instanceof NavigationEnd)),
+  );
   readonly mobile = toSignal(
     inject(BreakpointObserver)
       .observe('(max-width: 767px)')
@@ -185,6 +189,11 @@ export class App {
   );
   readonly desktopOpen = signal(true);
   readonly mobileOpen = signal(false);
+  constructor() {
+    afterRenderEffect(() => {
+      if (this.navigation()) this.mainContent().nativeElement.focus();
+    });
+  }
   toggleMenu() {
     this.mobile()
       ? this.mobileOpen.update((open) => !open)

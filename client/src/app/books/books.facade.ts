@@ -1,11 +1,11 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Service } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { Book } from './book';
 import { booksActions } from './books.actions';
 import { booksFeature } from './books.state';
 import { selectBookById, selectIsSearching, selectVisibleBooks } from './books.selectors';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class BooksFacade {
   private readonly store = inject(Store);
   readonly state = this.store.selectSignal(booksFeature.selectBooksState);

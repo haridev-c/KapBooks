@@ -1,23 +1,22 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Service } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { Book } from '../books/book';
-import { BookFormDialog } from '../books/book-form-dialog';
 import { BooksFacade } from '../books/books.facade';
 import { Course } from '../courses/course';
-import { CourseFormDialog } from '../courses/course-form-dialog';
 import { CoursesFacade } from '../courses/courses.facade';
 import { ConfirmDialog, ConfirmDialogData } from './confirm-dialog';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class LibraryDialogs {
   private readonly dialog = inject(MatDialog);
   private readonly books = inject(BooksFacade);
   private readonly courses = inject(CoursesFacade);
   private readonly formSize = { width: '640px', maxWidth: 'calc(100vw - 32px)' };
 
-  editBook(book: Book | null = null) {
+  async editBook(book: Book | null = null) {
+    const { BookFormDialog } = await import('../books/book-form-dialog');
     this.dialog
-      .open<BookFormDialog, Book | null, Omit<Book, 'id'>>(BookFormDialog, {
+      .open<InstanceType<typeof BookFormDialog>, Book | null, Omit<Book, 'id'>>(BookFormDialog, {
         ...this.formSize,
         data: book,
       })
@@ -26,12 +25,16 @@ export class LibraryDialogs {
         if (value) book ? this.books.update({ ...value, id: book.id }) : this.books.create(value);
       });
   }
-  editCourse(course: Course | null = null) {
+  async editCourse(course: Course | null = null) {
+    const { CourseFormDialog } = await import('../courses/course-form-dialog');
     this.dialog
-      .open<CourseFormDialog, Course | null, Omit<Course, 'id'>>(CourseFormDialog, {
-        ...this.formSize,
-        data: course,
-      })
+      .open<InstanceType<typeof CourseFormDialog>, Course | null, Omit<Course, 'id'>>(
+        CourseFormDialog,
+        {
+          ...this.formSize,
+          data: course,
+        },
+      )
       .afterClosed()
       .subscribe((value) => {
         if (value)
